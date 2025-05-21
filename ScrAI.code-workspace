@@ -11,7 +11,7 @@
             "**/.gitattributes": true,
             "**/.github": true,
             "**/.gitignore": true,
-            "**/pyproject.toml": true,
+            "**/pyproject.toml": false,
             "**/uv.lock": true,
             "**/.gitkeep": true,
         }

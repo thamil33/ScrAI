@@ -1,11 +1,11 @@
-# ScrAI V-Next: Comprehensive Development Blueprint
+# ScrAI: Comprehensive Development Blueprint
 
 **Version:** 0.1.0
 **Date:** May 21, 2025
 
 ## 1. Introduction & Vision
 
-This document outlines the comprehensive development blueprint for the next generation of ScrAI (referred to as ScrAI V-Next). The original ScrAI provided a foundational CLI framework for cognitive scenario simulated agents. This V-Next initiative aims to rebuild ScrAI from the ground up, focusing on creating a far more **robust, modular, scalable, and interactive experience.**
+This document outlines the comprehensive development blueprint for the next generation of ScrAI (referred to as ScrAI). The original ScrAI provided a foundational CLI framework for cognitive scenario simulated agents. This initiative aims to rebuild ScrAI from the ground up, focusing on creating a far more **robust, modular, scalable, and interactive experience.**
 
 The core vision is to develop a sophisticated engine for simulating worlds populated by intelligent **Actors** (driven by Large Language Models and the Agno agent framework), capable of complex behaviors, interactions, and participation in emergent narratives. The system will support hierarchical LLM control, where LLMs not only drive individual Actors but also orchestrate environmental dynamics and narrative progression. A key aspect of the enhanced interactivity will be the inclusion of **"Zeus" (or God-mode/Possession) functionality**, allowing users to directly influence and participate in the simulation.
 
