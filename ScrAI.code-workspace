@@ -3,5 +3,17 @@
         {
             "path": "."
         }
-    ]
+    ],
+    
+    "settings": {
+        "files.exclude": {
+            "**/.Gemini_Folder": true,
+            "**/.gitattributes": true,
+            "**/.github": true,
+            "**/.gitignore": true,
+            "**/pyproject.toml": true,
+            "**/uv.lock": true,
+            "**/.gitkeep": true,
+        }
+    }
 }
