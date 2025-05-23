@@ -1,0 +1,216 @@
+# File: scrai/engine/actors/basic_runtime.py
+
+import uuid
+import datetime
+from typing import Dict, Any, Optional, List, Tuple
+
+# Assuming Pydantic schemas and LLMInterface are accessible.
+# For a real project, these would be imported:
+# from configurations.schemas.actor_schema import Actor as ActorData, CognitiveCore as CognitiveCoreData, Goal
+# from configurations.schemas.event_schema import Event # If perceptions become full events
+# from engine.llm_services.llm_interface import LLMInterface, OpenRouterLLM # Example
+
+# --- Temporary Pydantic Model Definitions (for standalone execution) ---
+# In a real setup, remove these and use proper imports.
+from pydantic import BaseModel, Field
+
+class Goal(BaseModel): # Simplified for this example
+    description: str
+    priority: int = 0
+    class Config: from_attributes = True; validate_assignment = True
+
+class CognitiveCoreData(BaseModel): # Simplified Pydantic model
+    current_goals: List[Goal] = Field(default_factory=list)
+    emotions: Dict[str, float] = Field(default_factory=dict)
+    short_term_memory: List[str] = Field(default_factory=list)
+    llm_provider_settings: Dict[str, Any] = Field(default_factory=dict)
+    class Config: from_attributes = True; validate_assignment = True
+
+class ActorData(BaseModel): # Simplified Pydantic model for Actor data
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    name: str
+    description: Optional[str] = None
+    cognitive_core: CognitiveCoreData = Field(default_factory=CognitiveCoreData)
+    properties: Dict[str, Any] = Field(default_factory=dict)
+    state: Dict[str, Any] = Field(default_factory=dict)
+    class Config: from_attributes = True; validate_assignment = True
+
+# --- Placeholder LLMInterface (for standalone execution) ---
+# Replace with actual import from engine.llm_services.llm_interface
+class LLMInterface:
+    def complete_json(self, prompt: str, json_schema: Optional[Dict[str, Any]] = None, **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        print(f"\n--- LLMInterface (Mock) ---")
+        print(f"Received prompt for JSON completion:\n{prompt}")
+        print(f"Schema provided: {json_schema}")
+        print(f"Other kwargs: {kwargs}")
+        # Mock response for Pope Leo XIII's scenario
+        if "Pope Leo XIII" in prompt and "vision" in prompt:
+            action = {"action_name": "pray_intensely", "parameters": {"focus": "understanding_and_strength", "duration_minutes": 15}}
+            print(f"Mocked LLM JSON Response: {action}")
+            return action, {"model": "mock_model", "usage": {"prompt_tokens": 100, "completion_tokens": 10}}
+        elif "generic_action_request" in prompt: # A more generic fallback for other tests
+            action = {"action_name": "observe", "parameters": {"target": "surroundings"}}
+            print(f"Mocked LLM JSON Response: {action}")
+            return action, {"model": "mock_model", "usage": {"prompt_tokens": 50, "completion_tokens": 5}}
+
+        # Fallback error-like response if no specific mock matches
+        error_action = {"action_name": "error_confused", "parameters": {"reason": "Unexpected prompt for mock LLM."}}
+        print(f"Mocked LLM JSON Response (fallback error): {error_action}")
+        return error_action, {"model": "mock_model_error", "usage": {"prompt_tokens": 10, "completion_tokens": 3}}
+
+# --- End of Temporary Definitions ---
+
+
+class RuntimeCognitiveCore:
+    """
+    Manages the Actor's thinking process, including LLM interaction.
+    """
+    def __init__(self, actor_data: ActorData, llm_interface: LLMInterface):
+        self.actor_data = actor_data  # This is the Pydantic model instance
+        self.llm_interface = llm_interface
+        # The Pydantic model actor_data.cognitive_core holds the state like goals, emotions, memory
+        # No need to duplicate them here unless for runtime-specific tracking separate from serialized state
+
+    def add_perception_to_memory(self, perception: str):
+        """Adds a new perception to the short-term memory."""
+        self.actor_data.cognitive_core.short_term_memory.append(perception)
+        # Optional: Trim memory if it gets too long
+        max_memory_items = 10
+        if len(self.actor_data.cognitive_core.short_term_memory) > max_memory_items:
+            self.actor_data.cognitive_core.short_term_memory = self.actor_data.cognitive_core.short_term_memory[-max_memory_items:]
+
+    def _formulate_prompt(self) -> str:
+        """
+        Formulates a prompt for the LLM based on the actor's current state,
+        goals, and recent perceptions.
+        """
+        # Basic prompt formulation for the prototype
+        goals_str = "; ".join([goal.description for goal in self.actor_data.cognitive_core.current_goals])
+        memory_str = "; ".join(self.actor_data.cognitive_core.short_term_memory)
+        emotions_str = ", ".join([f"{k}: {v}" for k,v in self.actor_data.cognitive_core.emotions.items()])
+
+        prompt = (
+            f"You are {self.actor_data.name}. Your description: {self.actor_data.description}.\n"
+            f"Your current role/state: {self.actor_data.state.get('spiritual_state', self.actor_data.state.get('status', 'neutral'))}.\n"
+            f"Your current goals are: [{goals_str}].\n"
+            f"Your recent observations/thoughts (memory): [{memory_str}].\n"
+            f"Your current emotions are: [{emotions_str}].\n\n"
+            f"Based on this, what is your immediate, single next action? "
+            f"Respond ONLY with a JSON object in the format: "
+            f'{{"action_name": "your_action", "parameters": {{"param1": "value1", ...}}}}.\n'
+            f"Example actions: 'pray', 'speak', 'observe_surroundings', 'record_vision', 'show_emotion_fear', 'compose_prayer'.\n"
+            f"Your JSON response:"
+        )
+        return prompt
+
+    def think_and_decide_action(self) -> Dict[str, Any]:
+        """
+        Formulates a prompt, queries the LLM, and returns a structured action.
+        """
+        prompt = self._formulate_prompt()
+        
+        # Define a basic schema for the expected action response
+        action_json_schema = {
+            "type": "object",
+            "properties": {
+                "action_name": {"type": "string"},
+                "parameters": {"type": "object"}
+            },
+            "required": ["action_name"]
+        }
+
+        try:
+            # Use specific settings from actor_data.cognitive_core.llm_provider_settings if needed
+            # For now, llm_interface instance is assumed to be pre-configured or use its defaults
+            llm_settings = self.actor_data.cognitive_core.llm_provider_settings
+            
+            action_json, metadata = self.llm_interface.complete_json(
+                prompt,
+                json_schema=action_json_schema
+                # **llm_settings # Pass these if your LLMInterface.complete_json handles them as kwargs
+            )
+            
+            # Basic Validation (Pydantic would do more if action_json was parsed into a model)
+            if "action_name" not in action_json:
+                print(f"Warning: LLM response missing 'action_name'. Response: {action_json}")
+                return {"action_name": "error_invalid_response", "parameters": {"reason": "Missing action_name"}}
+            
+            # Clear memory of very recent items used for this prompt to avoid immediate repetition,
+            # or implement a more sophisticated memory management strategy.
+            # For now, we'll just keep it simple.
+            # self.actor_data.cognitive_core.short_term_memory.clear() 
+
+            return action_json
+
+        except Exception as e:
+            print(f"Error during LLM call or response processing: {e}")
+            # Fallback action in case of error
+            return {"action_name": "error_llm_unavailable", "parameters": {"error_message": str(e)}}
+
+
+class RuntimeActor:
+    """
+    Represents an Actor in the simulation at runtime.
+    This class will eventually integrate with the Agno agent framework.
+    """
+    def __init__(self, actor_data: ActorData, llm_interface: LLMInterface):
+        self.pydantic_data = actor_data # Store the initial Pydantic model data
+        self.cognitive_core = RuntimeCognitiveCore(self.pydantic_data, llm_interface)
+        
+        # TODO: Integrate with Agno agent framework:
+        # - self.agent = AgnoAgent(...)
+        # - Implement Agno lifecycle methods (setup, run_loop/on_event, cleanup)
+
+        print(f"RuntimeActor '{self.pydantic_data.name}' initialized.")
+
+    def perceive(self, perception_input: str):
+        """
+        The actor perceives something from the environment or an event.
+        For now, adds it to the cognitive core's short-term memory.
+        """
+        print(f"\nActor '{self.pydantic_data.name}' perceives: '{perception_input}'")
+        self.cognitive_core.add_perception_to_memory(perception_input)
+
+    def decide_and_act(self) -> Dict[str, Any]:
+        """
+        The actor uses its cognitive core to decide on an action and (for now) returns it.
+        In a full simulation, this would trigger the action via an ActionManager.
+        """
+        print(f"Actor '{self.pydantic_data.name}' is thinking...")
+        chosen_action = self.cognitive_core.think_and_decide_action()
+        
+        print(f"Actor '{self.pydantic_data.name}' decided action: {chosen_action}")
+        # TODO: Send chosen_action to an ActionManager for execution
+        return chosen_action
+
+# Example of how you might use these (would be in a main simulation script)
+if __name__ == "__main__":
+    # 1. Setup LLMInterface (using the mock for this example)
+    mock_llm_interface = LLMInterface()
+
+    # 2. Create ActorData (Pydantic model instance)
+    pope_actor_data = ActorData(
+        name="Pope Leo XIII (Runtime)",
+        description="Experiencing a vision.",
+        cognitive_core=CognitiveCoreData(
+            current_goals=[Goal(description="Understand the vision.")],
+            emotions={"awe": 0.9, "fear": 0.7}
+        ),
+        state={"spiritual_state": "in_vision"}
+    )
+
+    # 3. Create RuntimeActor instance
+    pope_runtime_actor = RuntimeActor(pope_actor_data, mock_llm_interface)
+
+    # 4. Simulate a perception and decision
+    initial_perception = "You hear a guttural voice, full of pride: 'I can destroy your Church.'"
+    pope_runtime_actor.perceive(initial_perception)
+    action_taken = pope_runtime_actor.decide_and_act()
+    print(f"--- End of Turn 1 for {pope_runtime_actor.pydantic_data.name} ---")
+
+    # Simulate another perception based on a hypothetical continuation
+    second_perception = "A gentle but firm voice responds: 'You have the time, you will have the power. Do with them what you will.'"
+    pope_runtime_actor.perceive(second_perception)
+    action_taken_2 = pope_runtime_actor.decide_and_act()
+    print(f"--- End of Turn 2 for {pope_runtime_actor.pydantic_data.name} ---")
+

@@ -11,9 +11,17 @@
             "**/.gitattributes": true,
             "**/.github": true,
             "**/.gitignore": true,
-            "**/pyproject.toml": false,
+            "**/pyproject.toml": true,
             "**/uv.lock": true,
             "**/.gitkeep": true,
+            "**/.venv": true,
+
+            "**/app": true,
+            "**/data_store": true,
+            "**/plugins": true,
+            "**/tools": true,
+            "**/tests": true,
+            "**/README.md": true,
         }
     }
 }
