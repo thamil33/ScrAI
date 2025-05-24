@@ -7,14 +7,15 @@
     
     "settings": {
         "files.exclude": {
-            "**/.Gemini_Folder": true,
             "**/.gitattributes": true,
             "**/.github": true,
             "**/.gitignore": true,
-            "**/pyproject.toml": true,
-            "**/uv.lock": true,
             "**/.gitkeep": true,
+
             "**/.venv": true,
+
+            "**/pyproject.toml": false,
+            "**/uv.lock": false,
 
             "**/app": false,
             "**/data_store": false,
