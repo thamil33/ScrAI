@@ -63,6 +63,6 @@ Before diving into the hybrid approach, the immediate next step as per our discu
 This involves:
 
 Removing the Mock: In engine/actors/basic_runtime.py (Canvas ID runtime_actor_classes), remove or comment out the placeholder LLMInterface and ensure it's prepared to receive a real one.
-Using the Real Interface: In run_leo_vision_prototype.py (Canvas ID leo_vision_prototype_script), ensure you are instantiating and passing the actual OpenRouterLLM (or LMStudioLLM) to the RuntimeActor. The script currently does this: llm_interface = OpenRouterLLM().
+Using the Real Interface: In run_protopope.py_prototype.py (Canvas ID protopope.py_prototype_script), ensure you are instantiating and passing the actual OpenRouterLLM (or LMStudioLLM) to the RuntimeActor. The script currently does this: llm_interface = OpenRouterLLM().
 Testing with a Real LLM Call: Run the prototype and verify that it makes a successful API call to OpenRouter (or LM Studio) and that the response is handled correctly. Debug any issues with API keys, model names, prompts, or response parsing.
 Once this single, real LLM integration is working smoothly for core decision-making, then you can strategically introduce a second LLM interface (e.g., for LM Studio specialized tasks) into the CognitiveCore and build out the logic for task-specific routing.

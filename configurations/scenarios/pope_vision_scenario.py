@@ -3,91 +3,11 @@
 import uuid
 import datetime
 
-# Assuming Pydantic schemas are accessible.
-# For a real project, these would be imported from their respective files in configurations.schemas
-# e.g., from configurations.schemas.actor_schema import Actor, Goal, CognitiveCore
-# from configurations.schemas.world_schema import WorldLocation, Coordinates
-# from configurations.schemas.event_schema import Event
-# from configurations.schemas.scenario_schema import Scenario, ActorPlacement
-
-# --- Temporary Pydantic Model Definitions (for standalone execution) ---
-# In a real setup, remove these and use proper imports from your schema files.
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
-
-class Entity(BaseModel):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    name: str
-    description: Optional[str] = None
-    properties: Dict[str, Any] = Field(default_factory=dict)
-    state: Dict[str, Any] = Field(default_factory=dict)
-    entity_type: str = "GenericEntity"
-    class Config: from_attributes = True; validate_assignment = True
-
-class Goal(BaseModel):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    description: str
-    status: str = "pending"
-    priority: int = 0
-    class Config: from_attributes = True; validate_assignment = True
-
-class CognitiveCore(BaseModel):
-    current_goals: List[Goal] = Field(default_factory=list)
-    emotions: Dict[str, float] = Field(default_factory=dict)
-    llm_provider_settings: Dict[str, Any] = Field(default_factory=dict)
-    current_plan: Optional[List[str]] = None
-    short_term_memory: List[str] = Field(default_factory=list)
-    class Config: from_attributes = True; validate_assignment = True
-
-class Actor(Entity):
-    entity_type: str = "Actor"
-    has_agency: bool = True
-    cognitive_core: CognitiveCore = Field(default_factory=CognitiveCore)
-    class Config: from_attributes = True; validate_assignment = True
-
-class Coordinates(BaseModel):
-    x: float
-    y: float
-    z: Optional[float] = None
-    class Config: from_attributes = True; validate_assignment = True
-
-class WorldLocation(Entity):
-    entity_type: str = "WorldLocation"
-    coordinates: Optional[Coordinates] = None
-    contained_entity_ids: List[uuid.UUID] = Field(default_factory=list)
-    connections: Dict[str, uuid.UUID] = Field(default_factory=dict)
-    location_category: str = "Undefined"
-    class Config: from_attributes = True; validate_assignment = True
-
-class Event(BaseModel):
-    event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    event_type: str
-    data: Dict[str, Any] = Field(default_factory=dict)
-    source_entity_id: Optional[uuid.UUID] = None
-    target_entity_id: Optional[uuid.UUID] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    class Config: from_attributes = True; validate_assignment = True
-
-class ActorPlacement(BaseModel):
-    actor_key_or_id: str 
-    starting_location_id: uuid.UUID
-    class Config: from_attributes = True; validate_assignment = True
-
-class Scenario(BaseModel):
-    scenario_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    name: str
-    description: Optional[str] = None
-    initial_actors: List[Actor] = Field(default_factory=list)
-    initial_locations: List[WorldLocation] = Field(default_factory=list)
-    actor_placements: List[ActorPlacement] = Field(default_factory=list)
-    predefined_events: List[Event] = Field(default_factory=list)
-    scenario_objectives: List[str] = Field(default_factory=list)
-    narrative_orchestrator_config: Dict[str, Any] = Field(default_factory=dict)
-    starting_time: Optional[datetime.datetime] = None
-    global_scenario_state: Dict[str, Any] = Field(default_factory=dict)
-    class Config: from_attributes = True; validate_assignment = True
-# --- End of Temporary Pydantic Model Definitions ---
+# Import actual Pydantic schemas from the configurations.schemas modules
+from configurations.schemas.actor_schema import Actor, Goal, CognitiveCore
+from configurations.schemas.world_schema import WorldLocation, Coordinates
+from configurations.schemas.event_schema import Event
+from configurations.schemas.scenario_schema import Scenario, ActorPlacement
 
 
 def get_pope_leo_xiii_vision_scenario() -> Scenario:
@@ -155,7 +75,7 @@ def get_pope_leo_xiii_vision_scenario() -> Scenario:
     # 5. Create the Scenario
     scenario_start_time = datetime.datetime(1884, 10, 13, 9, 0, 0) # Historically, the vision was on Oct 13, 1884. Time is arbitrary.
 
-    leo_vision_scenario = Scenario(
+    pope_vision_scenario = Scenario(
         name="Pope Leo XIII's Vision of the Two Voices",
         description="A scenario depicting Pope Leo XIII experiencing his profound vision where he overhears a conversation between the Lord and Satan concerning the future of the Church.",
         initial_actors=[pope_leo_xiii],
@@ -178,7 +98,7 @@ def get_pope_leo_xiii_vision_scenario() -> Scenario:
         }
     )
 
-    return leo_vision_scenario
+    return pope_vision_scenario
 
 if __name__ == "__main__":
     # This allows you to run this file directly to see the Pydantic model output

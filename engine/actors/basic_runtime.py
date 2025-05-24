@@ -15,6 +15,9 @@ from configurations.schemas.actor_schema import Actor as ActorData, CognitiveCor
 from engine.llm_services.llm_interface import LLMInterface # Base class for type hinting
 # Specific implementation (like OpenRouterLLM) will be passed in during instantiation.
 
+# --- 3. Import Action System ---
+from engine.systems.action_system import ActionManager, ActionOutcome, ActionResult
+
 
 class RuntimeCognitiveCore:
     """
@@ -30,6 +33,15 @@ class RuntimeCognitiveCore:
         self.actor_data = actor_pydantic_data  # This is the Pydantic model instance
         self.llm_interface = llm_interface
         # The Pydantic model actor_data.cognitive_core holds the state like goals, emotions, memory
+        
+        # Validate that we're using real Pydantic models
+        if not hasattr(self.actor_data, 'model_dump'):
+            raise ValueError("actor_pydantic_data must be a real Pydantic model, not a mock")
+        
+        # Ensure short_term_memory is properly initialized
+        if not hasattr(self.actor_data.cognitive_core, 'short_term_memory') or \
+           self.actor_data.cognitive_core.short_term_memory is None:
+            self.actor_data.cognitive_core.short_term_memory = []
 
     def add_perception_to_memory(self, perception: str):
         """Adds a new perception to the short-term memory."""
@@ -103,13 +115,16 @@ class RuntimeCognitiveCore:
                 print(f"Warning: LLM response missing 'action_name'. Response: {action_json}")
                 return {"action_name": "error_invalid_response", "parameters": {"reason": "Missing action_name", "raw_response": action_json}}
             
+            # Log successful LLM interaction for debugging
+            print(f"✅ LLM successfully responded with action: {action_json.get('action_name')}")
+            
             # Consider clearing or managing short_term_memory after successful use
             # self.actor_data.cognitive_core.short_term_memory.clear()
 
             return action_json
 
         except Exception as e:
-            print(f"Error during LLM call or response processing in CognitiveCore: {e}")
+            print(f"❌ Error during LLM call or response processing in CognitiveCore: {e}")
             return {"action_name": "error_llm_unavailable", "parameters": {"error_message": str(e)}}
 
 
@@ -127,6 +142,7 @@ class RuntimeActor:
         """
         self.pydantic_data = actor_pydantic_data 
         self.cognitive_core = RuntimeCognitiveCore(self.pydantic_data, llm_interface)
+        self.action_manager = ActionManager()  # Initialize ActionManager
         
         print(f"RuntimeActor '{self.pydantic_data.name}' initialized with ID: {self.pydantic_data.id}.")
 
@@ -139,13 +155,79 @@ class RuntimeActor:
 
     def decide_and_act(self) -> Dict[str, Any]:
         """
-        The actor uses its cognitive core to decide on an action.
+        The actor uses its cognitive core to decide on an action, then executes it.
         """
         print(f"Actor '{self.pydantic_data.name}' is thinking...")
         chosen_action = self.cognitive_core.think_and_decide_action()
         
         print(f"Actor '{self.pydantic_data.name}' decided action: {chosen_action}")
-        return chosen_action
+        
+        # Execute the action through ActionManager
+        outcome = self.execute_action(chosen_action)
+        
+        # Apply state changes from action execution
+        self.apply_action_outcome(outcome)
+        
+        return {"action": chosen_action, "outcome": outcome}
+    
+    def execute_action(self, action: Dict[str, Any]) -> ActionOutcome:
+        """
+        Execute an action using the ActionManager and return the outcome.
+        """
+        print(f"Executing action: {action.get('action_name', 'unknown')}")
+        outcome = self.action_manager.execute_action(action, self.pydantic_data)
+        
+        # Log the outcome
+        if outcome.result == ActionResult.SUCCESS:
+            print(f"✅ Action executed successfully: {outcome.message}")
+        else:
+            print(f"❌ Action execution {outcome.result.value}: {outcome.message}")
+        
+        return outcome
+    
+    def apply_action_outcome(self, outcome: ActionOutcome):
+        """
+        Apply the state changes from an action outcome to the actor's data.
+        """
+        if not outcome.state_changes:
+            return
+        
+        print(f"Applying state changes: {outcome.state_changes}")
+        
+        # Apply general state changes
+        for key, value in outcome.state_changes.items():
+            if key == "emotion_changes":
+                # Apply emotion changes to cognitive core
+                for emotion, new_value in value.items():
+                    if hasattr(self.pydantic_data.cognitive_core, 'emotions'):
+                        self.pydantic_data.cognitive_core.emotions[emotion] = new_value
+                        print(f"  Updated emotion {emotion} to {new_value}")
+            elif key in ["spiritual_state", "current_location_id"]:
+                # Apply to actor state
+                self.pydantic_data.state[key] = value
+                print(f"  Updated {key} to {value}")
+            else:
+                # Apply other state changes to general state
+                self.pydantic_data.state[key] = value
+                print(f"  Updated {key} to {value}")
+    
+    def get_available_actions(self) -> List[str]:
+        """
+        Get list of all available actions this actor can perform.
+        """
+        return self.action_manager.get_available_actions()
+    
+    def get_current_status(self) -> Dict[str, Any]:
+        """
+        Get a summary of the actor's current status including recent actions and state.
+        """
+        return {
+            "name": self.pydantic_data.name,
+            "current_state": self.pydantic_data.state,
+            "emotions": self.pydantic_data.cognitive_core.emotions,
+            "recent_memory": getattr(self.pydantic_data.cognitive_core, 'short_term_memory', [])[-3:],
+            "available_actions_count": len(self.get_available_actions())
+        }
 
 # Example of how you might use these (would be in a main simulation script)
 # This __main__ block is for quick testing of this file itself,
@@ -162,13 +244,25 @@ if __name__ == "__main__":
     class MockLLMInterface(LLMInterface): # Inherit to satisfy type hint
         def __init__(self, provider="mock", model="mock_model"):
             self.provider = provider
-            self.or_model = model # For compatibility if run_leo_vision_prototype checks it
+            self.or_model = model # For compatibility if run_protopope.py_prototype checks it
+            self.call_count = 0
             print(f"MockLLMInterface initialized for {provider} with model {model}")
 
         def complete_json(self, prompt: str, json_schema: Optional[Dict[str, Any]] = None, **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             print(f"\n--- MockLLMInterface ---")
             print(f"Received prompt for JSON completion:\n{prompt[:200]}...") # Truncate long prompts
-            action = {"action_name": "mock_pray", "parameters": {"intensity": "high"}}
+            
+            # Return different actions based on call count
+            actions = [
+                {"action_name": "pray", "parameters": {"intensity": "high", "duration": "long"}},
+                {"action_name": "record_vision", "parameters": {"detail": "divine light and future visions", "method": "mental record"}},
+                {"action_name": "contemplate", "parameters": {"subject": "meaning of the vision"}},
+                {"action_name": "observe_surroundings", "parameters": {"focus": "spiritual presence"}}
+            ]
+            
+            action = actions[self.call_count % len(actions)]
+            self.call_count += 1
+            
             print(f"Mocked LLM JSON Response: {action}")
             return action, {"model": "mock_model_direct_test", "usage": {}}
 
@@ -184,16 +278,31 @@ if __name__ == "__main__":
                 current_goals=[Goal(description="Understand the vision.")],
                 emotions={"awe": 0.9, "fear": 0.7},
                 short_term_memory=[] # Initialize explicitly
-            ),
-            state={"spiritual_state": "in_vision"}
+            ),            state={"spiritual_state": "in_vision"}
         )
-
+        
         pope_runtime_actor_test = RuntimeActor(pope_actor_data_test, mock_llm)
-        initial_perception_test = "A test perception for direct execution."
+        initial_perception_test = "A divine light appears before me, radiating peace and wisdom."
         pope_runtime_actor_test.perceive(initial_perception_test)
-        action_taken_test = pope_runtime_actor_test.decide_and_act()
-        print(f"--- Direct Test Complete for {pope_runtime_actor_test.pydantic_data.name} ---")
-        print(f"Action: {action_taken_test}")
+        
+        print(f"\n=== Initial Status ===")
+        print(f"Status: {pope_runtime_actor_test.get_current_status()}")
+        print(f"Available actions: {len(pope_runtime_actor_test.get_available_actions())} total")
+        
+        print(f"\n=== Action Execution ===")
+        action_result = pope_runtime_actor_test.decide_and_act()
+        
+        print(f"\n=== Final Status ===")
+        print(f"Status: {pope_runtime_actor_test.get_current_status()}")
+        
+        print(f"\n--- Direct Test Complete for {pope_runtime_actor_test.pydantic_data.name} ---")
+        print(f"Full Action Result: {action_result}")
+        
+        # Test another action cycle
+        print(f"\n=== Second Action Cycle ===")
+        pope_runtime_actor_test.perceive("The vision becomes clearer, showing scenes of future events.")
+        action_result_2 = pope_runtime_actor_test.decide_and_act()
+        print(f"Second action result: {action_result_2}")
 
     except ImportError as e:
         print(f"ImportError: {e}. Could not run direct test. Ensure schema files are in PYTHONPATH.")

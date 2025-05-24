@@ -16,12 +16,12 @@
             "**/.gitkeep": true,
             "**/.venv": true,
 
-            "**/app": true,
-            "**/data_store": true,
-            "**/plugins": true,
-            "**/tools": true,
-            "**/tests": true,
-            "**/README.md": true,
+            "**/app": false,
+            "**/data_store": false,
+            "**/plugins": false,
+            "**/tools": false,
+            "**/tests": false,
+            "**/README.md": false,
         }
     }
 }
