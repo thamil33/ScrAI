@@ -9,13 +9,13 @@
         "files.exclude": {
             "**/.gitattributes": true,
             "**/.github": true,
-            "**/.gitignore": true,
+            "**/.gitignore": false,
             "**/.gitkeep": true,
 
             "**/.venv": true,
 
-            "**/pyproject.toml": false,
-            "**/uv.lock": false,
+            "**/pyproject.toml": true,
+            "**/uv.lock": true,
 
             "**/app": false,
             "**/data_store": false,
