@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 # Real imports
 from configurations.schemas.actor_schema import Actor, Goal, CognitiveCore
-from engine.llm_services.llm_interface import OpenRouterLLM
+from engine.llm_services.llm_provider import OpenRouterLLM
 from engine.actors.basic_runtime import RuntimeActor
 
 def setup_logging():
@@ -65,11 +65,11 @@ def demo_llm_integration(test_actor):
     
     try:
         # Initialize real LLM interface
-        llm_interface = OpenRouterLLM()
-        logger.info(f"✅ LLM Interface initialized: {llm_interface.provider}")
+        llm_provider = OpenRouterLLM()
+        logger.info(f"✅ LLM Interface initialized: {llm_provider.provider}")
         
         # Create runtime actor
-        runtime_actor = RuntimeActor(test_actor, llm_interface)
+        runtime_actor = RuntimeActor(test_actor, llm_provider)
         logger.info(f"✅ RuntimeActor created for: {runtime_actor.pydantic_data.name}")
         
         # Test perception and action
@@ -113,7 +113,7 @@ def main():
             logger.info("🔄 Next steps: Expand action repertoire, add persistence, integrate Agno framework")
         else:
             logger.info("📋 Note: LLM integration requires proper .env configuration")
-            logger.info("📋 Check OPENROUTER_API_KEY and or_model settings")
+            logger.info("📋 Check OPENROUTER_API_KEY and OPENROUTER_MODEL settings")
             
     except Exception as e:
         print(f"ERROR in main: {e}")

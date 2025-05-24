@@ -93,7 +93,6 @@ def get_pope_leo_xiii_vision_scenario() -> Scenario:
         },
         starting_time=scenario_start_time,
         global_scenario_state={
-            "spiritual_veil_thin": True,
             "era": "late_19th_century"
         }
     )

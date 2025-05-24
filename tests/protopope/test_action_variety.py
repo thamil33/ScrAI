@@ -21,7 +21,7 @@ load_dotenv()
 
 # Import necessary modules
 from configurations.scenarios.pope_vision_scenario import get_pope_leo_xiii_vision_scenario
-from engine.llm_services.llm_interface import get_llm_interface
+from engine.llm_services.llm_provider import LLmClientInterface
 from engine.actors.basic_runtime import RuntimeActor
 
 def main():
@@ -31,15 +31,15 @@ def main():
     logger.info("Starting Action Variety Test...")
     
     # Initialize LLM interface
-    llm_interface = get_llm_interface()
-    logger.info(f"LLM Interface: {llm_interface.provider}, Model: {llm_interface.or_model}")
+    llm_provider = LLmClientInterface()
+    logger.info(f"LLM Interface: {llm_provider.provider}, Model: {llm_provider.OPENROUTER_MODEL}")
     
     # Load scenario
     scenario = get_pope_leo_xiii_vision_scenario()
     pope_actor_data = scenario.initial_actors[0]
     
     # Create runtime actor
-    pope_runtime = RuntimeActor(pope_actor_data, llm_interface)
+    pope_runtime = RuntimeActor(pope_actor_data, llm_provider)
     logger.info(f"Created RuntimeActor: {pope_runtime.pydantic_data.name}")
     logger.info(f"Available actions: {len(pope_runtime.get_available_actions())}")
     

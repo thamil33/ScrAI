@@ -11,8 +11,8 @@ from typing import Dict, Any, Optional, List, Tuple
 from configurations.schemas.actor_schema import Actor as ActorData, CognitiveCore as CognitiveCoreData, Goal
 # from configurations.schemas.event_schema import Event # Not directly used by these classes yet
 
-# --- 2. Import REAL LLMInterface ---
-from engine.llm_services.llm_interface import LLMInterface # Base class for type hinting
+# --- 2. Import REAL LLmClientInterface ---
+from engine.llm_services.llm_provider import LLmClientInterface # Base class for type hinting
 # Specific implementation (like OpenRouterLLM) will be passed in during instantiation.
 
 # --- 3. Import Action System ---
@@ -23,15 +23,15 @@ class RuntimeCognitiveCore:
     """
     Manages the Actor's thinking process, including LLM interaction.
     """
-    def __init__(self, actor_pydantic_data: ActorData, llm_interface: LLMInterface):
+    def __init__(self, actor_pydantic_data: ActorData, llm_provider: LLmClientInterface):
         """
         Initializes the RuntimeCognitiveCore.
         Args:
             actor_pydantic_data: The Pydantic model instance for the actor's data.
-            llm_interface: An instance of a class that implements LLMInterface (e.g., OpenRouterLLM).
+            llm_provider: An instance of a class that implements LLmClientInterface (e.g., OpenRouterLLM).
         """
         self.actor_data = actor_pydantic_data  # This is the Pydantic model instance
-        self.llm_interface = llm_interface
+        self.llm_provider = llm_provider
         # The Pydantic model actor_data.cognitive_core holds the state like goals, emotions, memory
         
         # Validate that we're using real Pydantic models
@@ -73,7 +73,7 @@ class RuntimeCognitiveCore:
 
         prompt = (
             f"You are {self.actor_data.name}. Your description: {self.actor_data.description}.\n"
-            f"Your current role/state: {self.actor_data.state.get('spiritual_state', self.actor_data.state.get('status', 'neutral'))}.\n"
+            f"Your current role/state: {self.actor_data.state.get('actor_state', self.actor_data.state.get('status', 'neutral'))}.\n"
             f"Your current goals are: [{goals_str}].\n"
             f"Your recent observations/thoughts (memory): [{memory_str}].\n"
             f"Your current emotions are: [{emotions_str}].\n\n"
@@ -101,11 +101,11 @@ class RuntimeCognitiveCore:
         }
 
         try:
-            # The llm_interface instance is already configured (e.g. OpenRouterLLM knows its model and API key)
-            # Specific per-call overrides could be passed if supported by LLMInterface.complete_json
+            # The llm_provider instance is already configured (e.g. OpenRouterLLM knows its model and API key)
+            # Specific per-call overrides could be passed if supported by LLmClientInterface.complete_json
             # llm_call_settings = self.actor_data.cognitive_core.llm_provider_settings
             
-            action_json, metadata = self.llm_interface.complete_json(
+            action_json, metadata = self.llm_provider.complete_json(
                 prompt,
                 json_schema=action_json_schema
                 # **llm_call_settings # If you want to pass temperature, max_tokens etc. per call
@@ -133,15 +133,15 @@ class RuntimeActor:
     Represents an Actor in the simulation at runtime.
     This class will eventually integrate with the Agno agent framework.
     """
-    def __init__(self, actor_pydantic_data: ActorData, llm_interface: LLMInterface):
+    def __init__(self, actor_pydantic_data: ActorData, llm_provider: LLmClientInterface):
         """
         Initializes the RuntimeActor.
         Args:
             actor_pydantic_data: The Pydantic model instance for the actor's initial data.
-            llm_interface: An instance of a class that implements LLMInterface.
+            llm_provider: An instance of a class that implements LLmClientInterface.
         """
         self.pydantic_data = actor_pydantic_data 
-        self.cognitive_core = RuntimeCognitiveCore(self.pydantic_data, llm_interface)
+        self.cognitive_core = RuntimeCognitiveCore(self.pydantic_data, llm_provider)
         self.action_manager = ActionManager()  # Initialize ActionManager
         
         print(f"RuntimeActor '{self.pydantic_data.name}' initialized with ID: {self.pydantic_data.id}.")
@@ -233,23 +233,23 @@ class RuntimeActor:
 # This __main__ block is for quick testing of this file itself,
 # but the main execution will be from protopope.py
 if __name__ == "__main__":
-    # This block requires the actual schema and LLMInterface files to be importable.
+    # This block requires the actual schema and LLmClientInterface files to be importable.
     # For a quick test of this file, you might need to temporarily re-add
-    # simplified Pydantic models and a mock LLMInterface here if imports fail.
+    # simplified Pydantic models and a mock LLmClientInterface here if imports fail.
     
     print("Running basic_runtime.py directly (for testing purposes).")
-    print("Ensure Pydantic schemas and LLMInterface are correctly importable.")
+    print("Ensure Pydantic schemas and LLmClientInterface are correctly importable.")
 
-    # --- Mock LLMInterface for direct testing of this file ---
-    class MockLLMInterface(LLMInterface): # Inherit to satisfy type hint
+    # --- Mock LLmClientInterface for direct testing of this file ---
+    class MockLLmClientInterface(LLmClientInterface): # Inherit to satisfy type hint
         def __init__(self, provider="mock", model="mock_model"):
             self.provider = provider
-            self.or_model = model # For compatibility if run_protopope.py_prototype checks it
+            self.OPENROUTER_MODEL = model # For compatibility if run_protopope.py_prototype checks it
             self.call_count = 0
-            print(f"MockLLMInterface initialized for {provider} with model {model}")
+            print(f"MockLLmClientInterface initialized for {provider} with model {model}")
 
         def complete_json(self, prompt: str, json_schema: Optional[Dict[str, Any]] = None, **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-            print(f"\n--- MockLLMInterface ---")
+            print(f"\n--- MockLLmClientInterface ---")
             print(f"Received prompt for JSON completion:\n{prompt[:200]}...") # Truncate long prompts
             
             # Return different actions based on call count
@@ -268,7 +268,7 @@ if __name__ == "__main__":
 
     # --- Test ---
     try:
-        mock_llm = MockLLMInterface()
+        mock_llm = MockLLmClientInterface()
         
         # Create ActorData (Pydantic model instance)
         pope_actor_data_test = ActorData(

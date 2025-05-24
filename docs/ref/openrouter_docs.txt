@@ -18,7 +18,7 @@ In the examples below, the OpenRouter-specific headers are optional. Setting the
   from openai import OpenAI
 
   client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
+    OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
     api_key="<OPENROUTER_API_KEY>",
   )
 
@@ -577,7 +577,7 @@ To use the `models` array with the OpenAI SDK, include it in the `extra_body` pa
     from openai import OpenAI
 
     openai_client = OpenAI(
-      base_url="https://openrouter.ai/api/v1",
+      OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
       api_key={{API_KEY_REF}},
     )
 
@@ -1440,7 +1440,7 @@ First, let's do some basic setup:
     MODEL = "{{MODEL}}"
 
     openai_client = OpenAI(
-      base_url="https://openrouter.ai/api/v1",
+      OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
       api_key=OPENROUTER_API_KEY,
     )
 
@@ -2762,11 +2762,11 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   import requests
 
   PROVISIONING_API_KEY = "your-provisioning-key"
-  BASE_URL = "https://openrouter.ai/api/v1/keys"
+  OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/keys"
 
   # List the most recent 100 API keys
   response = requests.get(
-      BASE_URL,
+      OPENROUTER_BASE_URL,
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2775,7 +2775,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   # You can paginate using the offset parameter
   response = requests.get(
-      f"{BASE_URL}?offset=100",
+      f"{OPENROUTER_BASE_URL}?offset=100",
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2784,7 +2784,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   # Create a new API key
   response = requests.post(
-      f"{BASE_URL}/",
+      f"{OPENROUTER_BASE_URL}/",
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2799,7 +2799,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   # Get a specific key
   key_hash = "<YOUR_KEY_HASH>"
   response = requests.get(
-      f"{BASE_URL}/{key_hash}",
+      f"{OPENROUTER_BASE_URL}/{key_hash}",
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2808,7 +2808,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   # Update a key
   response = requests.patch(
-      f"{BASE_URL}/{key_hash}",
+      f"{OPENROUTER_BASE_URL}/{key_hash}",
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2821,7 +2821,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   # Delete a key
   response = requests.delete(
-      f"{BASE_URL}/{key_hash}",
+      f"{OPENROUTER_BASE_URL}/{key_hash}",
       headers={
           "Authorization": f"Bearer {PROVISIONING_API_KEY}",
           "Content-Type": "application/json"
@@ -2831,10 +2831,10 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   ```typescript title="TypeScript"
   const PROVISIONING_API_KEY = 'your-provisioning-key';
-  const BASE_URL = 'https://openrouter.ai/api/v1/keys';
+  const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/keys';
 
   // List the most recent 100 API keys
-  const listKeys = await fetch(BASE_URL, {
+  const listKeys = await fetch(OPENROUTER_BASE_URL, {
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
       'Content-Type': 'application/json',
@@ -2842,7 +2842,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   });
 
   // You can paginate using the `offset` query parameter
-  const listKeys = await fetch(`${BASE_URL}?offset=100`, {
+  const listKeys = await fetch(`${OPENROUTER_BASE_URL}?offset=100`, {
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
       'Content-Type': 'application/json',
@@ -2850,7 +2850,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   });
 
   // Create a new API key
-  const createKey = await fetch(`${BASE_URL}`, {
+  const createKey = await fetch(`${OPENROUTER_BASE_URL}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
@@ -2865,7 +2865,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
 
   // Get a specific key
   const keyHash = '<YOUR_KEY_HASH>';
-  const getKey = await fetch(`${BASE_URL}/${keyHash}`, {
+  const getKey = await fetch(`${OPENROUTER_BASE_URL}/${keyHash}`, {
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
       'Content-Type': 'application/json',
@@ -2873,7 +2873,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   });
 
   // Update a key
-  const updateKey = await fetch(`${BASE_URL}/${keyHash}`, {
+  const updateKey = await fetch(`${OPENROUTER_BASE_URL}/${keyHash}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
@@ -2886,7 +2886,7 @@ All key management endpoints are under `/api/v1/keys` and require a Provisioning
   });
 
   // Delete a key
-  const deleteKey = await fetch(`${BASE_URL}/${keyHash}`, {
+  const deleteKey = await fetch(`${OPENROUTER_BASE_URL}/${keyHash}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${PROVISIONING_API_KEY}`,
@@ -8330,7 +8330,7 @@ class MCPClient:
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         self.openai = OpenAI(
-            base_url="https://openrouter.ai/api/v1"
+            OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
         )
 
     async def connect_to_server(self, server_config):
@@ -8924,7 +8924,7 @@ effort\_ratio is 0.8 for high effort, 0.5 for medium effort, and 0.2 for low eff
     from openai import OpenAI
 
     client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
         api_key="{{API_KEY_REF}}",
     )
 
@@ -9153,7 +9153,7 @@ This example shows how to handle usage information in streaming mode:
     from openai import OpenAI
 
     client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
         api_key="{{API_KEY_REF}}",
     )
 
@@ -9270,7 +9270,7 @@ You can find a few examples of using OpenRouter with other frameworks in [this G
 
   # gets API Key from environment variable OPENAI_API_KEY
   client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
+    OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
     api_key=getenv("OPENROUTER_API_KEY"),
   )
 
@@ -9381,7 +9381,7 @@ from pydantic_ai.models.openai import OpenAIModel
 
 model = OpenAIModel(
     "anthropic/claude-3.5-sonnet",  # or any other OpenRouter model
-    base_url="https://openrouter.ai/api/v1",
+    OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
     api_key="sk-or-...",
 )
 

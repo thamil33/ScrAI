@@ -1,12 +1,11 @@
 # File: protopope.py
-# (Place in project root or a 'prototypes' directory)
 
 import logging
 
 # --- 1. Import necessary components ---
 # A. LLM Service
-# Assuming llm_interface.py is in engine/llm_services/
-from engine.llm_services.llm_interface import OpenRouterLLM, LLMInterface 
+# Assuming llm_provider.py is in engine/llm_services/
+from engine.llm_services.llm_provider import OpenRouterLLM, LLmClientInterface 
 
 # B. Runtime Actor and Cognitive Core classes
 # Assuming basic_runtime.py is in engine/actors/
@@ -22,7 +21,7 @@ from configurations.scenarios.pope_vision_scenario import get_pope_leo_xiii_visi
 
 def setup_logging():
     """Sets up basic logging for the prototype."""
-    logging.basicConfig(level=logging.DEBUG, # Change to DEBUG for more verbose LLMInterface logs
+    logging.basicConfig(level=logging.DEBUG, # Change to DEBUG for more verbose LLmClientInterface logs
                         format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     # Reduce verbosity of httpx if it's too noisy at INFO level
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -36,16 +35,16 @@ def run_prototype():
     logger.info("Starting Pope Leo XIII Vision Prototype...")
 
     # --- 2. Initialize the LLM Interface ---
-    # This will use settings from your .env file (OPENROUTER_API_KEY, or_model, etc.)
+    # This will use settings from your .env file (OPENROUTER_API_KEY, OPENROUTER_MODEL, etc.)
     try:
         # You can choose which LLM provider to use or let it auto-select
-        # llm_interface = LLMInterface(provider="openrouter") # or "lmstudio" or "auto"
-        llm_interface = OpenRouterLLM() 
-        logger.info(f"LLM Interface initialized with provider: {llm_interface.provider}, model: {llm_interface.or_model}")
+        # llm_provider = LLmClientInterface(provider="openrouter") # or "lmstudio" or "auto"
+        llm_provider = OpenRouterLLM() 
+        logger.info(f"LLM Interface initialized with provider: {llm_provider.provider}, model: {llm_provider.OPENROUTER_MODEL}")
     except Exception as e:
         logger.error(f"Failed to initialize LLM Interface: {e}")
         logger.error("Please ensure your .env file is correctly set up with API keys and model names.")
-        logger.error("For OpenRouter, OPENROUTER_API_KEY and or_model (e.g., 'openai/gpt-4o') are needed.")
+        logger.error("For OpenRouter, OPENROUTER_API_KEY and OPENROUTER_MODEL (e.g., 'openai/gpt-4o') are needed.")
         return
 
     # --- 3. Load Scenario Data ---
@@ -84,7 +83,7 @@ def run_prototype():
     # The RuntimeActor's __init__ will create its RuntimeCognitiveCore
     pope_runtime_actor = RuntimeActor(
         actor_pydantic_data=pope_leo_pydantic_data,
-        llm_interface=llm_interface
+        llm_provider=llm_provider
     )
     logger.info(f"RuntimeActor '{pope_runtime_actor.pydantic_data.name}' created.")
 
@@ -140,7 +139,7 @@ def run_prototype():
     # --- 8. Summary of Real vs Mock Usage ---
     logger.info("=== Summary: Real Pydantic Models & LLM Usage ===")
     logger.info("✅ Using real Pydantic schemas from configurations.schemas.*")
-    logger.info("✅ Using real LLM API calls via engine.llm_services.llm_interface")
+    logger.info("✅ Using real LLM API calls via engine.llm_services.llm_provider")
     logger.info("✅ Actor state is properly managed through Pydantic models")
     logger.info("✅ Memory, emotions, and goals are tracked in the CognitiveCore")
     logger.info("✅ JSON schema validation ensures proper LLM response format")

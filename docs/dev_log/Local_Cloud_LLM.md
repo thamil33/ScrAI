@@ -26,10 +26,10 @@ How it Could Work for a Single Actor:
 
 The CognitiveCore would become more sophisticated, acting as an internal "LLM router" or "cognitive function dispatcher."
 
-Multiple LLMInterface Instances or Configurable Interface:
+Multiple LLmClientInterface Instances or Configurable Interface:
 
-The CognitiveCore might hold references to multiple LLMInterface instances (e.g., one configured for OpenRouter, another for LM Studio).
-Alternatively, the LLMInterface itself could be enhanced to support routing to different "sub-providers" based on hints or task types. Your current LLMInterface in llm_interface.py already has a provider argument that could be leveraged for this kind of dynamic selection.
+The CognitiveCore might hold references to multiple LLmClientInterface instances (e.g., one configured for OpenRouter, another for LM Studio).
+Alternatively, the LLmClientInterface itself could be enhanced to support routing to different "sub-providers" based on hints or task types. Your current LLmClientInterface in llm_provider.py already has a provider argument that could be leveraged for this kind of dynamic selection.
 Decision Logic in CognitiveCore:
 
 When a cognitive task arises (e.g., "process new perception," "retrieve relevant memory," "decide next major action," "generate dialogue snippet"), the CognitiveCore would decide which LLM (or series of LLMs/tools) is best suited.
@@ -42,8 +42,8 @@ Example Flow within CognitiveCore:
 
 Perception Arrives: A complex observation comes in.
 Memory Augmentation (LM Studio):
-CognitiveCore sends keywords or the perception text to a local embedding model via an LMStudioLLM interface to find relevant long-term memories.
-A local reranker model (also via LMStudioLLM) might refine these results.
+CognitiveCore sends keywords or the perception text to a local embedding model via an LocalLMStudio interface to find relevant long-term memories.
+A local reranker model (also via LocalLMStudio) might refine these results.
 Core Reasoning/Decision Making (OpenRouter):
 The original perception, plus the retrieved and reranked memories, are compiled into a prompt.
 CognitiveCore sends this prompt to a powerful model via an OpenRouterLLM interface to decide on a high-level plan or action.
@@ -52,17 +52,17 @@ If the action involves complex dialogue, OpenRouter might be used again.
 If it's a simpler, common phrase, a local model might generate it.
 Implementation Considerations:
 
-LLMInterface Modifications: Your LLMInterface in llm_interface.py is already designed to switch between OpenRouter and LM Studio at initialization. To use both concurrently for different tasks within one actor, you'd likely:
-Instantiate separate instances: open_router_llm = OpenRouterLLM() and lm_studio_llm = LMStudioLLM().
+LLmClientInterface Modifications: Your LLmClientInterface in llm_provider.py is already designed to switch between OpenRouter and LM Studio at initialization. To use both concurrently for different tasks within one actor, you'd likely:
+Instantiate separate instances: open_router_llm = OpenRouterLLM() and lm_studio_llm = LocalLMStudio().
 The CognitiveCore would then need access to both these instances, perhaps passed in during its initialization.
 Configuration: You'll need a clear way to configure which tasks use which LLM service (e.g., in the Actor's Pydantic definition or the SimulationDefinition).
 Getting the LLM Integrated Properly (First Step - Making it Real):
 
-Before diving into the hybrid approach, the immediate next step as per our discussion is to ensure the current prototype uses the actual OpenRouterLLM (or LMStudioLLM if you prefer to start there for a specific reason) from your engine.llm_services.llm_interface.py instead of the mock.
+Before diving into the hybrid approach, the immediate next step as per our discussion is to ensure the current prototype uses the actual OpenRouterLLM (or LocalLMStudio if you prefer to start there for a specific reason) from your engine.llm_services.llm_provider.py instead of the mock.
 
 This involves:
 
-Removing the Mock: In engine/actors/basic_runtime.py (Canvas ID runtime_actor_classes), remove or comment out the placeholder LLMInterface and ensure it's prepared to receive a real one.
-Using the Real Interface: In run_protopope.py_prototype.py (Canvas ID protopope.py_prototype_script), ensure you are instantiating and passing the actual OpenRouterLLM (or LMStudioLLM) to the RuntimeActor. The script currently does this: llm_interface = OpenRouterLLM().
+Removing the Mock: In engine/actors/basic_runtime.py (Canvas ID runtime_actor_classes), remove or comment out the placeholder LLmClientInterface and ensure it's prepared to receive a real one.
+Using the Real Interface: In run_protopope.py_prototype.py (Canvas ID protopope.py_prototype_script), ensure you are instantiating and passing the actual OpenRouterLLM (or LocalLMStudio) to the RuntimeActor. The script currently does this: llm_provider = OpenRouterLLM().
 Testing with a Real LLM Call: Run the prototype and verify that it makes a successful API call to OpenRouter (or LM Studio) and that the response is handled correctly. Debug any issues with API keys, model names, prompts, or response parsing.
 Once this single, real LLM integration is working smoothly for core decision-making, then you can strategically introduce a second LLM interface (e.g., for LM Studio specialized tasks) into the CognitiveCore and build out the logic for task-specific routing.

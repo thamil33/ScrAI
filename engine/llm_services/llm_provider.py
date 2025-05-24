@@ -13,13 +13,17 @@ from pathlib import Path
 env_path = Path(__file__).parents[2] / '.env'
 load_dotenv(dotenv_path=env_path)
 
-class LLMInterface:
+class LLmClientInterface:
+# Would like to see advanced 'auto' implementation used in the future:
+# Where logic would access available models from OpenRouter and LM Studio.
+# I.E, All :Free models from OpenRouter, as well as just-in-time loading of LM Studio models.
+# Also text embedding / reranking models to be used from LM Studio. 
     """
     Interface for interacting with Language Model APIs.
     Supports both OpenRouter and locally hosted LM Studio models.
     """
     
-    def __init__(self, provider: str = "auto", logger=None):
+    def __init__(self, provider: str = "openrouter", logger=None):
         """
         Initialize the LLM interface.
         
@@ -30,23 +34,24 @@ class LLMInterface:
         self.logger = logger or logging.getLogger(__name__)
         
         # Load API configurations from environment variables
-        self.or_model = os.getenv("or_model", "meta-llama/llama-4-maverick:free")
+        self.OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-4-maverick:free")
         self.or_api_key = os.getenv("OPENROUTER_API_KEY")
-        self.or_base_url = os.getenv("base_url", "https://openrouter.ai/api/v1")
+        self.or_base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         
-        self.lm_model = os.getenv("lm_model")
-        self.lm_api_key = os.getenv("LLMSTUDIO_API_KEY")
-        self.lm_base_url = os.getenv("LMSTUDIO_API_BASE")
+        self.LOCAL_MODEL = os.getenv("LOCAL_MODEL")
+        self.lm_api_key = os.getenv("LOCAL_API_KEY")
+        self.lm_base_url = os.getenv("LOCAL_BASE_URL")
         
-        # Set the provider
-        if provider == "auto":
-            # Prefer local LM Studio if available, otherwise use OpenRouter
-            if self._check_lmstudio_availability():
-                self.provider = "lmstudio"
-            else:
-                self.provider = "openrouter"
-        else:
-            self.provider = provider
+        # # # Set the provider
+        # if provider == "auto":
+        #     # Prefer local LM Studio if available, otherwise use OpenRouter
+        #     if self._check_lmstudio_availability():
+        #         self.provider = "lmstudio"
+        #     else:
+        #         self.provider = "openrouter"
+        # else:
+        
+        self.provider = provider
             
         self.logger.info(f"LLM Interface initialized with provider: {self.provider}")
 
@@ -61,24 +66,56 @@ class LLMInterface:
             return False
 
         try:
-            response = requests.get(f"{self.lm_base_url}/models", 
-                                   headers={"Authorization": f"Bearer {self.lm_api_key}"},
-                                   timeout=2)
+            # Use the correct OpenAI-compatible endpoint for LM Studio
+            models_url = f"{self.lm_base_url}/v1/models"
+            headers = {"Content-Type": "application/json"}
+            
+            # Add authorization if API key is available
+            if self.lm_api_key:
+                headers["Authorization"] = f"Bearer {self.lm_api_key}"
+                
+            response = requests.get(models_url, headers=headers, timeout=2)
             return response.status_code == 200
         except Exception as e:
             self.logger.warning(f"LM Studio not available: {e}")
             return False
 
+    def complete_json(self, prompt: str, json_schema: Optional[Dict[str, Any]] = None, 
+                     temperature: float = 0.7, max_tokens: int = 500) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Get a JSON completion from the configured provider.
+        This method delegates to the appropriate provider implementation.
+        
+        Args:
+            prompt: The prompt to send to the LLM
+            json_schema: Optional JSON schema for validation
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            Tuple of (parsed JSON response, metadata)
+        """
+        if self.provider == "openrouter":
+            # Create an OpenRouterLLM instance and delegate to it
+            openrouter_llm = OpenRouterLLM(logger=self.logger)
+            return openrouter_llm.complete_json(prompt, json_schema, temperature, max_tokens)
+        elif self.provider == "lmstudio":
+            # Create an LocalLMStudio instance and delegate to it
+            lmstudio_llm = LocalLMStudio(logger=self.logger)
+            return lmstudio_llm.complete_json(prompt, json_schema, temperature=temperature, max_tokens=max_tokens)
+        else:
+            raise ValueError(f"Unknown provider: {self.provider}")
+
 
 # Minimal concrete subclasses for compatibility with CLI and imports
 
-class OpenRouterLLM(LLMInterface):
+class OpenRouterLLM(LLmClientInterface):
     def __init__(self, api_key=None, model=None, logger=None):
         super().__init__(provider="openrouter", logger=logger)
         if api_key:
             self.or_api_key = api_key
         if model:
-            self.or_model = model
+            self.OPENROUTER_MODEL = model
             
     def complete_json(self, prompt: str, json_schema: Optional[Dict[str, Any]] = None, 
                      temperature: float = 0.7, max_tokens: int = 500) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -102,7 +139,7 @@ class OpenRouterLLM(LLMInterface):
         }
         
         payload = {
-            "model": self.or_model,
+            "model": self.OPENROUTER_MODEL,
             "temperature": temperature,
             "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": prompt}]
@@ -119,9 +156,9 @@ class OpenRouterLLM(LLMInterface):
             self.logger.debug(f"Sending request to OpenRouter API: {json.dumps(debug_payload)}")
             
             # Use the correct base URL and endpoint
-            base_url = "https://openrouter.ai/api/v1"
+            OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
             response = requests.post(
-                f"{base_url}/chat/completions",
+                f"{OPENROUTER_BASE_URL}/chat/completions",
                 headers=headers,
                 json=payload
             )
@@ -135,7 +172,7 @@ class OpenRouterLLM(LLMInterface):
                 
                 # Log detailed error information
                 self.logger.error(f"OpenRouter API error: {error_message}")
-                self.logger.error(f"Request URL: {base_url}/chat/completions")
+                self.logger.error(f"Request URL: {OPENROUTER_BASE_URL}/chat/completions")
                 self.logger.error(f"Request headers: {headers}")
                 self.logger.error(f"Response status: {response.status_code}")
                 
@@ -147,7 +184,7 @@ class OpenRouterLLM(LLMInterface):
                     elif "quota" in error_message.lower() or "exceed" in error_message.lower():
                         detailed_error += "\nPossible cause: API quota exceeded"
                     elif "model" in error_message.lower():
-                        detailed_error += f"\nPossible cause: Invalid model name '{self.or_model}'"
+                        detailed_error += f"\nPossible cause: Invalid model name '{self.OPENROUTER_MODEL}'"
                     else:
                         detailed_error += "\nPossible cause: Bad request format or invalid parameters"
                 
@@ -174,7 +211,7 @@ class OpenRouterLLM(LLMInterface):
             # Try to parse the JSON response
             try:
                 parsed_content = json.loads(content)
-                return parsed_content, {"model": data.get("model", self.or_model), "usage": data.get("usage", {})}
+                return parsed_content, {"model": data.get("model", self.OPENROUTER_MODEL), "usage": data.get("usage", {})}
             except json.JSONDecodeError:
                 # Try to extract JSON from non-JSON response
                 self.logger.warning("Response is not valid JSON, attempting to extract...")
@@ -184,7 +221,7 @@ class OpenRouterLLM(LLMInterface):
                     json_str = content[json_start:json_end]
                     try:
                         parsed_content = json.loads(json_str)
-                        return parsed_content, {"model": data.get("model", self.or_model), "usage": data.get("usage", {})}
+                        return parsed_content, {"model": data.get("model", self.OPENROUTER_MODEL), "usage": data.get("usage", {})}
                     except json.JSONDecodeError:
                         raise ValueError(f"Failed to extract valid JSON from response: {content}")
                 else:
@@ -198,18 +235,18 @@ class OpenRouterLLM(LLMInterface):
             raise
 
 
-class LMStudioLLM(LLMInterface):
+class LocalLMStudio(LLmClientInterface):
     def __init__(self, model=None, logger=None):
         super().__init__(provider="lmstudio", logger=logger)
         # Initialize model name from parameter or environment variable
-        self.model_name = model or self.lm_model or "default_model"
-        # Set up api_url for test compatibility
-        self.host = self.lm_base_url or "http://localhost:11434"
-        self.api_url = f"{self.host}/api/generate"
+        self.model_name = model or self.LOCAL_MODEL or "default_model"
+        # Set up api_url for LM Studio's OpenAI-compatible endpoint
+        self.host = self.lm_base_url or "http://localhost:1234"  # LM Studio default port
+        self.api_url = f"{self.host}/v1/chat/completions"
     
     def complete(self, prompt: str, **kwargs) -> Tuple[str, Dict[str, Any]]:
         """
-        Generate a text completion using lm_studio API.
+        Generate a text completion using LM Studio's OpenAI-compatible API.
         
         Args:
             prompt: The prompt to send to the LLM
@@ -220,45 +257,55 @@ class LMStudioLLM(LLMInterface):
         """
         # Default parameters
         params = {
-            "temperature": 0.7,
-            "top_p": 1.0,
-            "top_k": 40,
-            "repeat_penalty": 1.1
+            "temperature": kwargs.get("temperature", 0.7),
+            "max_tokens": kwargs.get("max_tokens", 500),
         }
         
-        # Override with any provided kwargs
-        params.update(kwargs)
-        
-        # Prepare the request
+        # Prepare the OpenAI-compatible request
         payload = {
             "model": self.model_name,
-            "prompt": prompt,
+            "messages": [{"role": "user", "content": prompt}],
             **params
         }
         
-        # Send the request
-        try:
-            response = requests.post(self.api_url, json=payload)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            raise ConnectionError(f"Failed to connect to lm_studio API: {e}")
-        
-        # lm_studio streams responses, but we'll collect the full response
-        completion_text = response.text.strip()
-        
-        # Extract metadata - limited for lm_studio
-        metadata = {
-            "model": self.model_name
+        # Set up headers for LM Studio
+        headers = {
+            "Content-Type": "application/json"
         }
         
-        return completion_text, metadata
+        # Add authorization if API key is available
+        if self.lm_api_key:
+            headers["Authorization"] = f"Bearer {self.lm_api_key}"
+        
+        # Send the request
+        try:
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            data = response.json()
+            completion_text = data["choices"][0]["message"]["content"]
+            
+            # Extract metadata
+            metadata = {
+                "model": data.get("model", self.model_name),
+                "usage": data.get("usage", {})
+            }
+            
+            return completion_text, metadata
+            
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to connect to LM Studio API: {e}")
+            raise ConnectionError(f"Failed to connect to LM Studio API: {e}")
+        except (KeyError, IndexError) as e:
+            self.logger.error(f"Unexpected response format from LM Studio: {e}")
+            raise ValueError(f"Unexpected response format from LM Studio: {e}")
     
     def complete_json(self, 
                      prompt: str, 
                      json_schema: Dict[str, Any],
                      **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Generate a JSON completion using lm_studio API.
+        Generate a JSON completion using LM Studio's OpenAI-compatible API.
         
         Args:
             prompt: The prompt to send to the LLM
@@ -275,28 +322,68 @@ class LMStudioLLM(LLMInterface):
         if "temperature" not in kwargs:
             kwargs["temperature"] = 0.2
         
-        # Get a completion
-        completion_text, metadata = self.complete(json_prompt, **kwargs)
+        # Use the OpenAI-compatible chat completions endpoint
+        params = {
+            "temperature": kwargs.get("temperature", 0.2),
+            "max_tokens": kwargs.get("max_tokens", 500),
+        }
         
-        # Extract JSON from the completion
+        # Prepare the OpenAI-compatible request
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": json_prompt}],
+            **params
+        }
+        
+        # Set up headers for LM Studio
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        # Add authorization if API key is available
+        if self.lm_api_key:
+            headers["Authorization"] = f"Bearer {self.lm_api_key}"
+        
+        # Send the request
         try:
-            # Try to find JSON in the response
-            json_start = completion_text.find("{")
-            json_end = completion_text.rfind("}")
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
             
-            if json_start >= 0 and json_end > json_start:
-                json_text = completion_text[json_start:json_end + 1]
-                parsed_json = json.loads(json_text)
-            else:
-                # If no JSON markers found, try parsing the entire response
-                parsed_json = json.loads(completion_text)
-                
-        except json.JSONDecodeError:
-            # If JSON parsing fails, return a formatted error
-            parsed_json = {
-                "error": "Failed to parse JSON from completion",
-                "completion_text": completion_text
+            data = response.json()
+            completion_text = data["choices"][0]["message"]["content"]
+            
+            # Extract metadata
+            metadata = {
+                "model": data.get("model", self.model_name),
+                "usage": data.get("usage", {})
             }
-        
-        return parsed_json, metadata
+            
+            # Extract JSON from the completion
+            try:
+                # Try to find JSON in the response
+                json_start = completion_text.find("{")
+                json_end = completion_text.rfind("}")
+                
+                if json_start >= 0 and json_end > json_start:
+                    json_text = completion_text[json_start:json_end + 1]
+                    parsed_json = json.loads(json_text)
+                else:
+                    # If no JSON markers found, try parsing the entire response
+                    parsed_json = json.loads(completion_text)
+                    
+            except json.JSONDecodeError:
+                # If JSON parsing fails, return a formatted error
+                parsed_json = {
+                    "error": "Failed to parse JSON from completion",
+                    "completion_text": completion_text
+                }
+            
+            return parsed_json, metadata
+            
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to connect to LM Studio API: {e}")
+            raise ConnectionError(f"Failed to connect to LM Studio API: {e}")
+        except (KeyError, IndexError) as e:
+            self.logger.error(f"Unexpected response format from LM Studio: {e}")
+            raise ValueError(f"Unexpected response format from LM Studio: {e}")
 
