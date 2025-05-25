@@ -6,7 +6,7 @@
 Integrating the Agno framework is a key architectural decision (see `README.md` and `ProtoPope.md`). This will provide robust actor lifecycle management, concurrency, and advanced agent capabilities.
 
 **Actions:**
-- Refactor `RuntimeActor` (`engine/actors/basic_runtime.py`) to inherit from or be managed by the Agno agent structure.
+- Refactor `ScrAIActor` (`engine/actors/basic_runtime.py`) to inherit from or be managed by the Agno agent structure.
 - Map current `perceive` and `decide_and_act` logic into Agno's lifecycle methods (see `ProtoPope.md`).
 - Consult `agno_docs.txt` for best practices on agent implementation, state management, and tool usage.
 
@@ -52,7 +52,7 @@ Perceptions are currently simple strings. A `PerceptionManager` will enable stru
 **Actions:**
 - Design and implement `engine/simulation/perception_manager.py`.
 - Define how perceptions are generated (e.g., based on events, actor location, sensory capabilities).
-- Modify `RuntimeActor` to receive/process structured perceptions from the `PerceptionManager`.
+- Modify `ScrAIActor` to receive/process structured perceptions from the `PerceptionManager`.
 
 ---
 

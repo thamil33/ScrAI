@@ -28,7 +28,7 @@ def get_pope_leo_xiii_vision_scenario() -> Scenario:
                 Goal(description="Discern the appropriate response to the vision.", priority=8)
             ],
             emotions={"awe": 0.8, "fear": 0.6, "determination": 0.5, "sadness": 0.4},
-            llm_provider_settings={"model": "should_be_overidden"} # Example, can be overridden
+            # llm_provider_settings={"model": "should_be_overidden"} # Example, can be overridden
         )
     )
 
@@ -98,7 +98,6 @@ def get_pope_leo_xiii_vision_scenario() -> Scenario:
     )
 
     return pope_vision_scenario
-
 if __name__ == "__main__":
     # This allows you to run this file directly to see the Pydantic model output
     scenario_data = get_pope_leo_xiii_vision_scenario()

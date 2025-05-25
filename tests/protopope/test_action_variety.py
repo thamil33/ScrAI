@@ -22,7 +22,7 @@ load_dotenv()
 # Import necessary modules
 from configurations.scenarios.pope_vision_scenario import get_pope_leo_xiii_vision_scenario
 from engine.llm_services.llm_provider import LLmClientInterface
-from engine.actors.basic_runtime import RuntimeActor
+from engine.actors.basic_runtime import ScrAIActor
 
 def main():
     """
@@ -39,8 +39,8 @@ def main():
     pope_actor_data = scenario.initial_actors[0]
     
     # Create runtime actor
-    pope_runtime = RuntimeActor(pope_actor_data, llm_provider)
-    logger.info(f"Created RuntimeActor: {pope_runtime.pydantic_data.name}")
+    pope_runtime = ScrAIActor(pope_actor_data, llm_provider)
+    logger.info(f"Created ScrAIActor: {pope_runtime.pydantic_data.name}")
     logger.info(f"Available actions: {len(pope_runtime.get_available_actions())}")
     
     # Test multiple perception-action cycles

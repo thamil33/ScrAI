@@ -7,7 +7,7 @@ from typing import Dict, Any
 # Real imports
 from configurations.schemas.actor_schema import Actor, Goal, CognitiveCore
 from engine.llm_services.llm_provider import OpenRouterLLM
-from engine.actors.basic_runtime import RuntimeActor
+from engine.actors.basic_runtime import ScrAIActor
 
 def setup_logging():
     """Sets up basic logging for the demo."""
@@ -69,8 +69,8 @@ def demo_llm_integration(test_actor):
         logger.info(f"✅ LLM Interface initialized: {llm_provider.provider}")
         
         # Create runtime actor
-        runtime_actor = RuntimeActor(test_actor, llm_provider)
-        logger.info(f"✅ RuntimeActor created for: {runtime_actor.pydantic_data.name}")
+        runtime_actor = ScrAIActor(test_actor, llm_provider)
+        logger.info(f"✅ ScrAIActor created for: {runtime_actor.pydantic_data.name}")
         
         # Test perception and action
         runtime_actor.perceive("This is a test perception for demonstrating real LLM usage.")

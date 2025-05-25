@@ -25,7 +25,7 @@ This development phase successfully transitioned the ScrAI prototype from using 
 ### **2. Complete ActionManager Integration**
 **File:** `engine/actors/basic_runtime.py`
 
-**Enhanced RuntimeActor class with full action execution pipeline:**
+**Enhanced ScrAIActor class with full action execution pipeline:**
 - Added `ActionManager` initialization in constructor
 - Implemented `execute_action()` method to process actions through ActionManager
 - Added `apply_action_outcome()` method to update actor state from action results
@@ -187,7 +187,7 @@ ActionManager.execute_action()
     ↓
 ActionOutcome with state_changes
     ↓
-RuntimeActor.apply_action_outcome()
+ScrAIActor.apply_action_outcome()
     ↓
 Updated Actor State & Memory
 ```
